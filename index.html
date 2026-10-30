@@ -581,7 +581,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '24';
+const APP_VERSION = '25';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
@@ -3282,6 +3282,7 @@ async function folderImport() {
   finally { folderBusy = false; }
 }
 if (folderApp) {
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && autoCloud) folderImport(); });
   const t = $('#autoCloudBtn span:last-child'); if (t) t.innerHTML = 'Salva ogni scansione in una cartella<small>Scegli una volta sola la cartella, per esempio Scrivania › Scansioni. Ogni scansione arriva lì da sola, e i PDF della cartella restano al sicuro anche se l’app si svuota</small>';
   (async () => { await new Promise(r => setTimeout(r, 1500)); if (autoCloud) folderImport(); else { try { const name = await folderCall({ cmd: 'status' }); if (name) { autoCloud = true; syncAutoCloud(); try { localStorage.setItem('scanner-auto-cloud', '1'); } catch (e) {} folderImport(); } } catch (e) {} } })();
 }
