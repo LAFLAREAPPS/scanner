@@ -555,6 +555,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
       <span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M7 18.5h10.5a4 4 0 00.6-7.95A6 6 0 006.6 9.1 4.75 4.75 0 007 18.5z"/><path d="M12 15.5v-5M9.8 12.6L12 10.4l2.2 2.2"/></svg></span>
       <span>Backup su iCloud o File<small>Un unico file con tutte le scansioni. Scegli “Salva su File” → iCloud Drive</small></span>
     </button>
+    <button class="tgl" id="autoCloudBtn" aria-pressed="false"><span class="sw"></span><span>Copia ogni scansione su iCloud<small>Dopo ogni Salva ti propongo subito il PDF: tocca “Salva su File” e scegli Scrivania › Scansioni (iPhone poi se la ricorda)</small></span></button>
     <button class="row-btn" id="backupRestore">
       <span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></span>
       <span>Ripristina backup<small>Apri un file di backup salvato in precedenza</small></span>
@@ -580,7 +581,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '22';
+const APP_VERSION = '23';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
@@ -1634,7 +1635,7 @@ async function openFiles(files) {
   }
   busy(false); renderAll();
   toast(from === 'doc' ? `${ok} pagine aggiunte` : `Salvato in Archivio · ${ok} pagine`);
-  if (doc) autoNameMaybe(doc);
+  if (doc) { autoNameMaybe(doc); cloudCopy(doc.id); }
 }
 $('#camInput').onchange = e => { const f = [...e.target.files]; e.target.value = ''; openFiles(f); };
 $('#fileInput').onchange = e => { const f = [...e.target.files]; e.target.value = ''; openFiles(f); };
@@ -1837,6 +1838,7 @@ async function edCommit(quiet) {
   const n = docPages(p.docId).length;
   if (!quiet) toast(wasNew ? (n > 1 ? `Salvato in Archivio · ${n} pagine` : from === 'doc' ? 'Pagina aggiunta' : 'Salvato in Archivio') : 'Pagina aggiornata');
   autoNameMaybe(doc);
+  if (!quiet && wasNew) cloudCopy(p.docId);
   return p;
 }
 $('#edSave').onclick = async () => {
@@ -2703,7 +2705,7 @@ $('#idSave').onclick = async () => {
     c = idRender(600);
     const d = await newDoc(); d.name = `Fototessera ${todayStr()}`; d.autoName = false; await safe(store.put('docs', d));
     await savePage(c, FULL, 0, 'original', null, d.id);
-    toast('Fototessera salvata in Archivio'); idClose();
+    toast('Fototessera salvata in Archivio'); idClose(); cloudCopy(d.id, true);
   } catch (e) { toast('Errore: ' + e.message); }
   finally { free(c); busy(false); }
 };
@@ -2889,7 +2891,7 @@ async function dualSave() {
     page = await composeDual(DUAL.front, back);
     const d = await newDoc(); d.name = `Fronte e retro ${todayStr()}`; await safe(store.put('docs', d));
     await savePage(page, FULL, 0, 'original', null, d.id);
-    closeEditor(); DUAL = null; renderAll(); toast('Salvato in Archivio · fronte e retro su una pagina');
+    closeEditor(); DUAL = null; renderAll(); toast('Salvato in Archivio · fronte e retro su una pagina'); cloudCopy(d.id);
     autoNameMaybe(d);
   } catch (e) { toast('Errore: ' + e.message); }
   finally { free(page); busy(false); }
@@ -3176,6 +3178,31 @@ let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; show('installBtn', true); });
 window.addEventListener('appinstalled', () => { installEvt = null; show('installBtn', false); toast('App installata'); });
 $('#installBtn').onclick = async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; show('installBtn', false); };
+
+
+/* ---------------- copia automatica su iCloud ---------------- */
+// un'app web non può scrivere da sola in iCloud: dopo ogni salvataggio preparo il file e apro il menu di condivisione
+let autoCloud = false;
+try { autoCloud = localStorage.getItem('scanner-auto-cloud') === '1'; } catch (e) {}
+const syncAutoCloud = () => $('#autoCloudBtn').setAttribute('aria-pressed', autoCloud ? 'true' : 'false');
+$('#autoCloudBtn').onclick = () => {
+  autoCloud = !autoCloud; syncAutoCloud(); try { localStorage.setItem('scanner-auto-cloud', autoCloud ? '1' : '0'); } catch (e) {}
+  toast(autoCloud ? 'Dopo ogni scansione ti propongo il salvataggio su iCloud' : 'Copia su iCloud disattivata');
+};
+syncAutoCloud();
+async function cloudCopy(docId, jpg) {
+  if (!autoCloud) return;
+  const d = getDoc(docId); if (!d || !docPages(d.id).length) return;
+  await new Promise(r => setTimeout(r, 300));
+  let file;
+  try {
+    if (jpg) { const p = docPages(d.id)[0]; file = new File([p.processed], fileBase(d.name) + '.jpg', { type: 'image/jpeg' }); }
+    else { busy('Preparo il PDF per iCloud…'); await raf(); file = new File([await buildPDF(d.id)], fileBase(d.name) + '.pdf', { type: 'application/pdf' }); }
+  } catch (e) { toast(e.message); return; } finally { busy(false); }
+  // serve un tocco per aprire il menu (regola di iPhone): lo chiedo con un pulsante chiaro
+  if (!(await ask(`Copia “${file.name}” su iCloud: nel menu scegli “Salva su File”, poi Scrivania › Scansioni.`, 'Salva su iCloud', false))) return;
+  if (!(await shareFiles([file]))) { download(file, file.name); toast('File scaricato'); }
+}
 
 /* ---------------- tasto Indietro (Android) e gesto Indietro del browser ---------------- */
 // finché è aperta una schermata, c'è una voce in più nella cronologia: "Indietro" chiude la schermata invece di uscire dall'app
