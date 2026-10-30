@@ -581,7 +581,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '23';
+const APP_VERSION = '24';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
@@ -631,7 +631,12 @@ const store = {
   get(k) { return this.req('meta', 'readonly', s => s.get(k)); },
   set(k, v) { return this.req('meta', 'readwrite', s => s.put(v, k)); }
 };
-const safe = p => Promise.resolve(p).catch(e => { console.warn(e); return null; });
+let saveWarned = 0;
+const safe = p => Promise.resolve(p).catch(e => {
+  console.warn(e);
+  if (Date.now() - saveWarned > 20000) { saveWarned = Date.now(); try { toast('Attenzione: non riesco a salvare sul telefono'); } catch (x) {} }
+  return null;
+});
 
 /* ---------------- immagini ---------------- */
 function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
@@ -1223,7 +1228,7 @@ async function autoNameMaybe(doc, force = false) {
     const name = nameFromText(txt);
     if (doc.autoName) {
       doc.autoFrom = first.id;
-      if (name) { doc.name = name; toast('Riconosciuto: ' + name); }
+      if (name) { doc.name = name; toast('Riconosciuto: ' + name); cloudSoon(doc.id); }
       else if (force) toast('Tipo di documento non riconosciuto');
       await safe(store.put('docs', doc));
     }
@@ -1285,13 +1290,14 @@ async function savePage(src, corners, rot, filter, existing, docId) {
   await safe(store.put('pages', p));
   const doc = getDoc(p.docId);
   if (doc) { doc.updatedAt = Date.now(); await safe(store.put('docs', doc)); }
+  cloudSoon(p.docId);
   return p;
 }
 async function deletePage(p) {
   pages = pages.filter(x => x !== p); await safe(store.del('pages', p.id));
   const doc = getDoc(p.docId);
   if (doc && !docPages(doc.id).length) await deleteDoc(doc, true);
-  else if (doc) { doc.updatedAt = Date.now(); safe(store.put('docs', doc)); autoNameMaybe(doc); }
+  else if (doc) { doc.updatedAt = Date.now(); safe(store.put('docs', doc)); autoNameMaybe(doc); cloudSoon(doc.id); }
 }
 async function deleteDoc(doc, silent) {
   for (const p of docPages(doc.id)) { await safe(store.del('pages', p.id)); }
@@ -3185,13 +3191,25 @@ $('#installBtn').onclick = async () => { if (!installEvt) return; installEvt.pro
 let autoCloud = false;
 try { autoCloud = localStorage.getItem('scanner-auto-cloud') === '1'; } catch (e) {}
 const syncAutoCloud = () => $('#autoCloudBtn').setAttribute('aria-pressed', autoCloud ? 'true' : 'false');
-$('#autoCloudBtn').onclick = () => {
+$('#autoCloudBtn').onclick = async () => {
+  if (folderApp) {
+    if (autoCloud) { autoCloud = false; toast('Copia nella cartella disattivata'); }
+    else {
+      let name = null;
+      try { name = await folderCall({ cmd: 'pick' }); } catch (e) { toast(e.message); }
+      if (!name) return;
+      autoCloud = true; toast('Le scansioni andranno in “' + name + '”'); folderImport();
+    }
+    syncAutoCloud(); try { localStorage.setItem('scanner-auto-cloud', autoCloud ? '1' : '0'); } catch (e) {}
+    return;
+  }
   autoCloud = !autoCloud; syncAutoCloud(); try { localStorage.setItem('scanner-auto-cloud', autoCloud ? '1' : '0'); } catch (e) {}
   toast(autoCloud ? 'Dopo ogni scansione ti propongo il salvataggio su iCloud' : 'Copia su iCloud disattivata');
 };
 syncAutoCloud();
 async function cloudCopy(docId, jpg) {
   if (!autoCloud) return;
+  if (folderApp) { cloudSoon(docId, jpg); return; }
   const d = getDoc(docId); if (!d || !docPages(d.id).length) return;
   await new Promise(r => setTimeout(r, 300));
   let file;
@@ -3202,6 +3220,70 @@ async function cloudCopy(docId, jpg) {
   // serve un tocco per aprire il menu (regola di iPhone): lo chiedo con un pulsante chiaro
   if (!(await ask(`Copia “${file.name}” su iCloud: nel menu scegli “Salva su File”, poi Scrivania › Scansioni.`, 'Salva su iCloud', false))) return;
   if (!(await shareFiles([file]))) { download(file, file.name); toast('File scaricato'); }
+}
+
+/* ---------------- app iPhone: cartella collegata ---------------- */
+// Nell'app ogni scansione finisce da sola nella cartella scelta, e i PDF della cartella
+// che mancano nell'archivio rientrano da soli: così anche se l'app si svuota non si perde nulla.
+const folderApp = !!(window.webkit && webkit.messageHandlers && webkit.messageHandlers.cloud);
+const folderCall = m => webkit.messageHandlers.cloud.postMessage(m);
+const lsJson = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
+const lsSave = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+let folderFiles = lsJson('scanner-folder-files', {}), folderSeen = new Set(lsJson('scanner-folder-seen', []));
+let folderBusy = false; const folderT = {};
+const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
+function cloudSoon(docId, jpg) {
+  if (!folderApp || !autoCloud || folderBusy || !docId) return;
+  clearTimeout(folderT[docId]); folderT[docId] = setTimeout(() => folderWrite(docId, jpg), 2500);
+}
+async function folderWrite(docId, jpg) {
+  const d = getDoc(docId); if (!d || !docPages(d.id).length) return;
+  if (naming.has(d.id)) { cloudSoon(docId, jpg); return; } // aspetto che abbia il nome giusto
+  try {
+    const blob = jpg ? docPages(d.id)[0].processed : await buildPDF(d.id);
+    const name = fileBase(d.name) + (jpg ? '.jpg' : '.pdf'), replaces = folderFiles[d.id], size = 2097152;
+    let at = 0, final = null, first = true;
+    do {
+      const data = b64(new Uint8Array(await blob.slice(at, at + size).arrayBuffer())); at += size;
+      final = await folderCall({ cmd: 'write', id: d.id, name, replaces, data, first, last: at >= blob.size }); first = false;
+    } while (at < blob.size);
+    folderFiles[d.id] = final; lsSave('scanner-folder-files', folderFiles);
+    folderSeen.add(final); lsSave('scanner-folder-seen', [...folderSeen]);
+  } catch (e) { console.warn(e); toast('Non riesco a salvare nella cartella: ' + e.message); }
+}
+async function folderRead(name) {
+  const out = []; let offset = 0, r;
+  do {
+    r = await folderCall({ cmd: 'read', name, offset, length: 3000000 });
+    const s = atob(r.data), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+    out.push(u); offset += u.length;
+  } while (!r.last);
+  return new File(out, name, { type: 'application/pdf' });
+}
+async function folderImport() {
+  if (!folderApp || folderBusy) return;
+  try {
+    if (!(await folderCall({ cmd: 'status' }))) return;
+    const have = new Set([...docs, ...trash].map(d => fileBase(d.name) + '.pdf'));
+    const list = (await folderCall({ cmd: 'list' })).filter(n => /\.pdf$/i.test(n) && !folderSeen.has(n));
+    const miss = list.filter(n => { if (!have.has(n)) return true; folderSeen.add(n); return false; });
+    lsSave('scanner-folder-seen', [...folderSeen]);
+    if (!miss.length) return;
+    folderBusy = true; let n = 0;
+    for (let i = 0; i < miss.length; i++) {
+      try {
+        busy(`Riprendo dalla cartella ${i + 1} di ${miss.length}…`); await raf();
+        const file = await folderRead(miss[i]);
+        if (await importPdf(file, i + 1, miss.length)) { n++; folderSeen.add(miss[i]); lsSave('scanner-folder-seen', [...folderSeen]); }
+      } catch (e) { console.warn(e); }
+    }
+    busy(false); renderAll(); if (n) toast(n === 1 ? 'Ripreso 1 documento dalla cartella' : `Ripresi ${n} documenti dalla cartella`);
+  } catch (e) { console.warn(e); busy(false); }
+  finally { folderBusy = false; }
+}
+if (folderApp) {
+  const t = $('#autoCloudBtn span:last-child'); if (t) t.innerHTML = 'Salva ogni scansione in una cartella<small>Scegli una volta sola la cartella, per esempio Scrivania › Scansioni. Ogni scansione arriva lì da sola, e i PDF della cartella restano al sicuro anche se l’app si svuota</small>';
+  (async () => { await new Promise(r => setTimeout(r, 1500)); if (autoCloud) folderImport(); else { try { const name = await folderCall({ cmd: 'status' }); if (name) { autoCloud = true; syncAutoCloud(); try { localStorage.setItem('scanner-auto-cloud', '1'); } catch (e) {} folderImport(); } } catch (e) {} } })();
 }
 
 /* ---------------- tasto Indietro (Android) e gesto Indietro del browser ---------------- */
