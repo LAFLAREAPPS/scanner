@@ -217,7 +217,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .id-chip{display:flex;align-items:center;gap:10px;width:100%;max-width:360px;padding:12px 16px;border-radius:20px;text-align:left;font-weight:620;font-size:15px;transition:transform .15s}
 .id-chip:active{transform:scale(.97)}
 .install-chip{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:99px;font-weight:640;font-size:14px;color:#5ee8cf}.install-chip svg.i{width:18px;height:18px;color:#5ee8cf}
-.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:360px}
+.quick{display:grid;grid-template-columns:1fr;gap:10px;width:100%}
 .q-chip{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px 14px;border-radius:20px;text-align:left;font-weight:640;font-size:14.5px;transition:transform .15s}
 .q-chip:active{transform:scale(.96)}
 .q-chip svg.i{width:22px;height:22px;margin-bottom:3px;color:#9fb2ff}
@@ -299,6 +299,10 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .hero-wrap{justify-content:safe center;overflow-y:auto;-webkit-overflow-scrolling:touch}
 @media (max-height:740px){.hero.compact p{display:none}.hero.compact{padding:16px 20px}.hero.compact .hero-ic{width:46px;height:46px;margin-bottom:8px}.q-chip small{display:none}.hero-wrap{gap:12px}}
 .brand img{box-shadow:none}
+#grid{display:flex;flex-direction:column;align-items:center;gap:16px}
+#grid .card{flex:none;width:100%;max-width:520px}
+#grid .card-actions svg.i{transform:rotate(90deg)}
+#grid .card-actions .del svg.i{transform:none}
 </style>
 </head>
 <body>
@@ -312,10 +316,6 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
       <div class="hero-ic"><svg class="i" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 015.5 4H8M16 4h2.5A1.5 1.5 0 0120 5.5V8M20 16v2.5a1.5 1.5 0 01-1.5 1.5H16M8 20H5.5A1.5 1.5 0 014 18.5V16"/><path d="M4 12h16"/></svg></div>
       <h1 id="heroTitle">Pronto a scansionare</h1>
       <p id="heroText">Inquadra il documento e scatta. Bordi, prospettiva e nome li sistemo io.</p>
-    </div>
-    <div class="quick">
-      <button id="dualBtn" class="q-chip glass"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2.5"/><circle cx="8.5" cy="11" r="2"/><path d="M5.8 15.5c.6-1.4 1.6-2 2.7-2s2.1.6 2.7 2M13.5 9.5h4.5M13.5 12.5h3"/></svg><span>Fronte e retro</span><small>Carta d'identità, patente…</small></button>
-      <button id="idBtn" class="q-chip glass"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="3"/><circle cx="12" cy="10" r="3.2"/><path d="M6.8 20.5c.8-3 2.8-4.6 5.2-4.6s4.4 1.6 5.2 4.6"/></svg><span>Fototessera</span><small>35×45 · sfondo bianco</small></button>
     </div>
     <button id="installBtn" class="install-chip glass hidden"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/></svg><span>Installa come app</span></button>
     <section id="recents" class="recents hidden">
@@ -512,6 +512,18 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 <input id="sigInput" type="file" accept="image/*" hidden>
 
 <!-- ESPORTA -->
+<div id="scanSheet" class="overlay sheet-wrap hidden">
+  <div class="sheet glass">
+    <div class="grab"></div>
+    <h3>Cosa vuoi scansionare?</h3>
+    <div class="quick">
+      <button id="docBtn" class="q-chip glass"><svg class="i" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M10 12.5h5M10 16h5"/></svg>Documento<small>Una o più pagine</small></button>
+      <button id="dualBtn" class="q-chip glass"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="13" rx="2.5"/><circle cx="8.5" cy="11" r="2"/><path d="M5.8 15.5c.6-1.4 1.6-2 2.7-2s2.1.6 2.7 2M13.5 9.5h4.5M13.5 12.5h3"/></svg><span>Fronte e retro</span><small>Carta d'identità, patente…</small></button>
+      <button id="idBtn" class="q-chip glass"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="3"/><circle cx="12" cy="10" r="3.2"/><path d="M6.8 20.5c.8-3 2.8-4.6 5.2-4.6s4.4 1.6 5.2 4.6"/></svg><span>Fototessera</span><small>35×45 · sfondo bianco</small></button>
+    </div>
+  </div>
+</div>
+
 <div id="sheet" class="overlay sheet-wrap hidden">
   <div class="sheet glass">
     <div class="grab"></div>
@@ -581,7 +593,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '26';
+const APP_VERSION = '27';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
@@ -1413,6 +1425,7 @@ function renderDoc() {
   ps.forEach((p, i) => {
     const el = document.createElement('div');
     el.className = 'card glass' + (PSEL.on && PSEL.ids.has(p.id) ? ' sel' : ''); el.dataset.id = p.id;
+    if (p.w && p.h) el.style.aspectRatio = `${p.w} / ${Math.round(p.h * 1.06)}`; // ogni pagina con la sua forma
     el.innerHTML = `<img src="${p.thumb}" alt="Pagina ${i + 1}"><span class="num">${i + 1}</span><span class="tick">${ICON.check}</span>` +
       (editMode ? `<div class="card-actions"><button data-a="left" ${i === 0 ? 'disabled' : ''}>${ICON.left}</button><button data-a="del" class="del">${ICON.del}</button><button data-a="right" ${i === ps.length - 1 ? 'disabled' : ''}>${ICON.right}</button></div>` : '');
     el.onclick = ev => {
@@ -1558,7 +1571,9 @@ $('#vDelete').onclick = async () => {
 
 /* ---------------- acquisizione ---------------- */
 function pick(input, docId, from) { DUAL = null; target = docId; returnTo = from; input.click(); }
-$('#shootBtn').onclick = () => pick($('#camInput'), null, 'home');
+$('#shootBtn').onclick = () => $('#scanSheet').classList.remove('hidden');
+$('#docBtn').onclick = () => pick($('#camInput'), null, 'home');
+$('#scanSheet').onclick = e => { if (e.target.id === 'scanSheet' || e.target.closest('button')) $('#scanSheet').classList.add('hidden'); };
 $('#importBtn').onclick = () => pick($('#fileInput'), null, 'home');
 $('#docShoot').onclick = () => pick($('#camInput'), openId, 'doc');
 $('#docImport').onclick = () => pick($('#fileInput'), openId, 'doc');
@@ -3322,7 +3337,7 @@ if (folderApp) {
 const vis = id => !$('#' + id).classList.contains('hidden');
 function backAction() {
   if (vis('modal')) { $('#modalCancel').click(); return true; }
-  for (const id of ['sheet', 'idSheet', 'sigPad', 'backupSheet']) if (vis(id)) { $('#' + id).classList.add('hidden'); return true; }
+  for (const id of ['scanSheet', 'sheet', 'idSheet', 'sigPad', 'backupSheet']) if (vis(id)) { $('#' + id).classList.add('hidden'); return true; }
   if (vis('signer')) { closeSigner(); return true; }
   if (vis('idphoto')) { idClose(); return true; }
   if (vis('editor')) { $('#edCancel').click(); return true; }
@@ -3331,7 +3346,7 @@ function backAction() {
   if (vis('archive')) { SEL.on ? selExit() : $('#archBack').click(); return true; }
   return false;
 }
-const anyOpen = () => ['sheet', 'idSheet', 'sigPad', 'backupSheet', 'signer', 'idphoto', 'editor', 'viewer', 'docview', 'archive'].some(vis);
+const anyOpen = () => ['scanSheet', 'sheet', 'idSheet', 'sigPad', 'backupSheet', 'signer', 'idphoto', 'editor', 'viewer', 'docview', 'archive'].some(vis);
 function guardHistory() { if (anyOpen() && !(history.state && history.state.scanner)) try { history.pushState({ scanner: 1 }, ''); } catch (e) {} }
 window.addEventListener('popstate', () => { backAction(); setTimeout(guardHistory, 0); });
 {
