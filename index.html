@@ -53,7 +53,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .panel::after,.viewer::after,.editor::after{content:"";position:absolute;left:0;right:0;top:100%;height:calc(var(--sb) + 160px);background:inherit;pointer-events:none}
 .swiping{box-shadow:-18px 0 40px rgba(0,0,0,.45)}
 .panel{z-index:3;background:radial-gradient(900px 600px at 0% -10%,#141c40 0%,transparent 60%),radial-gradient(800px 600px at 110% 110%,#0b2a33 0%,transparent 55%),var(--bg);animation:slide .28s cubic-bezier(.2,.9,.3,1)}
-@keyframes slide{from{transform:translateX(30px);opacity:0}}
+@keyframes slide{from{transform:translateX(100%)}}
 .muted{color:var(--muted);font-size:13px}
 
 /* barre */
@@ -593,7 +593,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '29';
+const APP_VERSION = '30';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
@@ -1401,7 +1401,7 @@ function renderArchive() {
   }
   if (all.length) { const v = document.createElement('p'); v.className = 'muted'; v.style.cssText = 'text-align:center;margin:22px 0 6px;font-size:12px'; v.textContent = 'Scanner · versione ' + APP_VERSION; el.appendChild(v); }
 }
-function openArchive() { if (trashView) setTrashView(false); show('archive', true); renderArchive(); indexSoon(400); }
+function openArchive() { if (trashView) setTrashView(false); renderArchive(); show('archive', true); indexSoon(400); }
 function openDoc(id, from) {
   openId = id; docFrom = from; editMode = false;
   const d0 = getDoc(id); if (d0) markOpened(d0);
