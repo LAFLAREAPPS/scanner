@@ -299,6 +299,8 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .hero-wrap{justify-content:safe center;overflow-y:auto;-webkit-overflow-scrolling:touch}
 @media (max-height:740px){.hero.compact p{display:none}.hero.compact{padding:16px 20px}.hero.compact .hero-ic{width:46px;height:46px;margin-bottom:8px}.q-chip small{display:none}.hero-wrap{gap:12px}}
 .brand img{box-shadow:none}
+/* le barre scorrono sopra pagine bianche: vetro scuro, così i testi restano leggibili */
+.actions.glass,.doc-bar.glass{background:rgba(16,20,34,.84);-webkit-backdrop-filter:blur(26px) saturate(150%) brightness(.55);backdrop-filter:blur(26px) saturate(150%) brightness(.55)}
 #grid{display:flex;flex-direction:column;align-items:center;gap:16px}
 #grid .card{flex:none;width:100%;max-width:520px}
 #grid .card-actions svg.i{transform:rotate(90deg)}
@@ -593,7 +595,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '30';
+const APP_VERSION = '31';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
