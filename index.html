@@ -595,7 +595,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '32';
+const APP_VERSION = '33';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
@@ -1927,12 +1927,12 @@ document.querySelectorAll('#sizeSeg button').forEach(b => b.onclick = () => {
   exportSize = b.dataset.size;
   document.querySelectorAll('#sizeSeg button').forEach(x => x.classList.toggle('on', x === b));
 });
-async function buildPDF(docId, list, layers) {
+async function buildPDF(docId, list, layers, best) {
   await pdfReady(); if (!window.jspdf) throw new Error('Libreria PDF non caricata (serve internet la prima volta)');
   const { jsPDF } = window.jspdf; let doc = null;
   const pages = list || docPages(docId);
   for (let i = 0; i < pages.length; i++) {
-    const p = pages[i], data = await pdfData(p), land = p.w > p.h, o = land ? 'l' : 'p';
+    const p = pages[i], data = await pdfData(p, best), land = p.w > p.h, o = land ? 'l' : 'p';
     let ox = 0, oy = 0, w, h, k; // k: da unità della pagina a punti tipografici
     if (exportSize === 'a4') {
       if (!doc) doc = new jsPDF({ orientation: o, unit: 'mm', format: 'a4', compress: true }); else doc.addPage('a4', o);
@@ -2894,8 +2894,8 @@ const Q_HINT = { light: 'Il più piccolo: per email, PEC e portali con limiti di
 function syncQ() { document.querySelectorAll('#qSeg button').forEach(b => b.classList.toggle('on', b.dataset.q === pdfQ)); $('#qHint').textContent = Q_HINT[pdfQ]; }
 document.querySelectorAll('#qSeg button').forEach(b => b.onclick = () => { pdfQ = b.dataset.q; syncQ(); try { localStorage.setItem('scanner-pdf-q', pdfQ); } catch (e) {} });
 syncQ();
-async function pdfData(p) {
-  if (pdfQ === 'max') return blobToDataURL(p.processed);
+async function pdfData(p, best) {
+  if (best || pdfQ === 'max') return blobToDataURL(p.processed);
   const side = pdfQ === 'light' ? 1650 : 2480, q = pdfQ === 'light' ? .62 : .8; // ~140 e ~210 punti per pollice su un A4
   const c = await blobToCanvas(p.processed, 12e6, side);
   try { return c.toDataURL('image/jpeg', q); } finally { free(c); }
@@ -3256,7 +3256,7 @@ async function cloudCopy(docId, jpg) {
   let file;
   try {
     if (jpg) { const p = docPages(d.id)[0]; file = new File([p.processed], fileBase(d.name) + '.jpg', { type: 'image/jpeg' }); }
-    else { busy('Preparo il PDF per iCloud…'); await raf(); file = new File([await buildPDF(d.id)], fileBase(d.name) + '.pdf', { type: 'application/pdf' }); }
+    else { busy('Preparo il PDF per iCloud…'); await raf(); file = new File([await buildPDF(d.id, null, null, true)], fileBase(d.name) + '.pdf', { type: 'application/pdf' }); }
   } catch (e) { toast(e.message); return; } finally { busy(false); }
   // serve un tocco per aprire il menu (regola di iPhone): lo chiedo con un pulsante chiaro
   if (!(await ask(`Copia “${file.name}” su iCloud: nel menu scegli “Salva su File”, poi Scrivania › Scansioni.`, 'Salva su iCloud', false))) return;
@@ -3281,7 +3281,7 @@ async function folderWrite(docId, jpg) {
   const d = getDoc(docId); if (!d || !docPages(d.id).length) return;
   if (naming.has(d.id)) { cloudSoon(docId, jpg); return; } // aspetto che abbia il nome giusto
   try {
-    const blob = jpg ? docPages(d.id)[0].processed : await buildPDF(d.id);
+    const blob = jpg ? docPages(d.id)[0].processed : await buildPDF(d.id, null, null, true); // la copia di sicurezza è sempre alla massima qualità
     const name = fileBase(d.name) + (jpg ? '.jpg' : '.pdf'), replaces = folderFiles[d.id], size = 2097152;
     let at = 0, final = null, first = true;
     do {
@@ -3297,7 +3297,14 @@ function folderMark(d, file) {
   folderAt[d.id] = d.updatedAt || 0; lsSave('scanner-folder-at', folderAt);
 }
 // scansioni che non sono arrivate nella cartella (app chiusa subito, fatte prima di sceglierla, documenti uniti o rinominati)
+let folderCatching = false;
 async function folderCatchUp(list) {
+  if (folderCatching) return; folderCatching = true;
+  try { await folderCatchUpRun(list); } finally { folderCatching = false; }
+}
+async function folderCatchUpRun(list) {
+  // una volta sola: le copie fatte prima in qualità standard si rifanno alla massima
+  if (!localStorage.getItem('scanner-folder-best')) { folderAt = {}; lsSave('scanner-folder-at', folderAt); try { localStorage.setItem('scanner-folder-best', '1'); } catch (e) {} }
   const there = new Set(list.map(n => n.normalize('NFC')));
   for (const d of docs.filter(x => docPages(x.id).length)) {
     if (naming.has(d.id)) continue;
