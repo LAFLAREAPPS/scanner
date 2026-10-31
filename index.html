@@ -593,7 +593,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '27';
+const APP_VERSION = '28';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
@@ -1420,7 +1420,7 @@ function renderDoc() {
   if (document.activeElement !== $('#docName')) $('#docName').value = d.name;
   $('#docMeta').textContent = (ps.length === 1 ? '1 pagina' : ps.length + ' pagine') + ' · ' + whenLabel(d.createdAt) + (naming.has(d.id) ? ' · riconosco…' : '');
   $('#editBtn').classList.toggle('on', editMode || PSEL.on); $('#editBtn').innerHTML = editMode || PSEL.on ? ICON.check : ICON.pen;
-  const g = $('#grid'); g.innerHTML = ''; g.classList.toggle('editing', editMode); g.classList.toggle('psel', PSEL.on);
+  const g = $('#grid'); for (const c of g.children) { sharp.unobserve(c); if (c.sharpUrl) URL.revokeObjectURL(c.sharpUrl); } g.innerHTML = ''; g.classList.toggle('editing', editMode); g.classList.toggle('psel', PSEL.on);
   if (PSEL.on) { for (const id of [...PSEL.ids]) if (!ps.some(p => p.id === id)) PSEL.ids.delete(id); pselUpdate(); }
   ps.forEach((p, i) => {
     const el = document.createElement('div');
@@ -1436,8 +1436,22 @@ function renderDoc() {
       if (!editMode) openViewer(i);
     };
     g.appendChild(el);
+    sharpen(el, p);
   });
 }
+// anteprime a piena definizione: solo per le pagine vicine allo schermo, così la memoria resta libera
+const sharp = new IntersectionObserver(list => {
+  for (const e of list) {
+    const c = e.target, img = c.firstElementChild;
+    if (e.isIntersecting && !c.sharpUrl && c.sharpPage.processed) {
+      c.sharpUrl = URL.createObjectURL(c.sharpPage.processed);
+      img.decoding = 'async'; img.src = c.sharpUrl;
+    } else if (!e.isIntersecting && c.sharpUrl) {
+      URL.revokeObjectURL(c.sharpUrl); c.sharpUrl = null; img.src = c.sharpPage.thumb;
+    }
+  }
+}, { root: $('#grid'), rootMargin: '500px 0px' });
+function sharpen(el, p) { el.sharpPage = p; sharp.observe(el); }
 async function cardAction(p, a) {
   const list = docPages(p.docId), i = list.indexOf(p);
   if (a === 'del') {
