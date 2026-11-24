@@ -206,6 +206,19 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .row-btn small{display:block;color:var(--muted);font-size:12px;font-weight:450;margin-top:1px}
 .row-btn.main{background:linear-gradient(135deg,rgba(142,166,255,.32),rgba(94,232,207,.22));border-color:rgba(255,255,255,.18);padding:14px}
 .row-btn.main .ic{background:rgba(255,255,255,.18)}
+.pdf-hero{width:100%;display:flex;align-items:center;gap:14px;margin-top:10px;padding:16px;border-radius:20px;background:linear-gradient(135deg,#8ea6ff,#5ee8cf);color:#0b1020;text-align:left;box-shadow:0 10px 30px rgba(94,232,207,.25),inset 0 1px 0 rgba(255,255,255,.45);transition:transform .15s,filter .2s}
+.pdf-hero:active{transform:scale(.98);filter:brightness(.92)}
+.pdf-badge{flex:0 0 auto;width:52px;height:58px;border-radius:12px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.pdf-badge svg{width:22px;height:22px;fill:none;stroke:#e5484d;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pdf-badge b{font-size:13px;font-weight:800;letter-spacing:.04em;color:#e5484d;line-height:1}
+.pdf-txt{flex:1;min-width:0}.pdf-txt b{display:block;font-size:18px;font-weight:750;letter-spacing:-.01em}
+.pdf-txt small{display:block;font-size:12.5px;font-weight:550;opacity:.7;margin-top:2px}
+.pdf-go{flex:0 0 auto;width:24px;height:24px;fill:none;stroke:#0b1020;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.opt-tgl{width:100%;display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 12px;border-radius:14px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.opt-tgl .opt-sum{margin-left:auto;font-weight:500;font-size:12.5px}
+.opt-tgl .chev{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.opt-tgl[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.pdf-opts{padding-bottom:4px}
 .seg.mini{margin-top:8px}.seg.mini button{font-size:12px;padding:7px 4px}
 .sheet-lbl{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin:14px 4px 2px}
 .fmt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
@@ -534,10 +547,13 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
       <button data-scope="page">Questa pagina</button>
       <button data-scope="all" class="on">Tutto il documento</button>
     </div>
-    <button class="row-btn main" id="exPdf">
-      <span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M14 3.5H7A2.5 2.5 0 004.5 6v12A2.5 2.5 0 007 20.5h10a2.5 2.5 0 002.5-2.5V9L14 3.5z"/><path d="M14 3.5V9h5.5"/></svg></span>
-      <span>PDF<small>Il più usato · WhatsApp, Mail, File…</small></span>
+    <button class="pdf-hero" id="exPdf">
+      <span class="pdf-badge"><svg viewBox="0 0 24 24"><path d="M14 3.5H7A2.5 2.5 0 004.5 6v12A2.5 2.5 0 007 20.5h10a2.5 2.5 0 002.5-2.5V9L14 3.5z"/><path d="M14 3.5V9h5.5"/></svg><b>PDF</b></span>
+      <span class="pdf-txt"><b>Condividi PDF</b><small>WhatsApp, Mail, File…</small></span>
+      <svg class="pdf-go" viewBox="0 0 24 24"><path d="M12 15V3.5M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5V18a2.5 2.5 0 002.5 2.5h9A2.5 2.5 0 0019 18v-5.5"/></svg>
     </button>
+    <button class="opt-tgl" id="pdfOptBtn" aria-expanded="false"><span>Opzioni PDF</span><span class="opt-sum" id="pdfOptSum"></span><svg class="chev" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></svg></button>
+    <div class="pdf-opts" id="pdfOpts" hidden>
     <div class="seg glass mini" id="sizeSeg">
       <button data-size="a4" class="on">Su foglio A4</button>
       <button data-size="fit">Senza bordi bianchi</button>
@@ -549,6 +565,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
     </div>
     <p class="q-hint" id="qHint"></p>
     <button class="tgl" id="pdfTextBtn" aria-pressed="false"><span class="sw"></span><span>Testo selezionabile nel PDF<small>Puoi cercare e copiare il testo · qualche secondo in più</small></span></button>
+    </div>
     <div class="sheet-lbl">Altri formati</div>
     <div class="fmt-grid">
       <button class="fmt" id="exJpg"><span class="ic"><svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16l-5-5-8.5 8.5"/></svg></span><b>Foto JPG</b><small>Una per pagina</small></button>
@@ -595,7 +612,7 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 const $ = s => document.querySelector(s);
 const raf = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 const FILTERS = [['auto','Auto'],['color','Colore'],['magic','Documento'],['enhance','Grigio'],['bw','B/N'],['original','Originale']];
-const APP_VERSION = '34';
+const APP_VERSION = '35';
 const FULL = [[0,0],[1,0],[1,1],[0,1]];
 const ICON = {
   left:'<svg class="i" viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg>',
@@ -1978,7 +1995,8 @@ function openExport(cfg) {
   EX = { scope: 'all', ...cfg };
   const seg = $('#scopeSeg'); seg.hidden = !cfg.page;
   seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.scope === EX.scope));
-  exRefresh();
+  exRefresh(); pdfOptSum();
+  $('#pdfOpts').hidden = true; $('#pdfOptBtn').setAttribute('aria-expanded', 'false');
   $('#sheet').classList.remove('hidden');
 }
 function exList() { return EX.scope === 'page' && EX.page ? EX.page() : EX.all(); }
@@ -2894,6 +2912,12 @@ const Q_HINT = { light: 'Il più piccolo: per email, PEC e portali con limiti di
 function syncQ() { document.querySelectorAll('#qSeg button').forEach(b => b.classList.toggle('on', b.dataset.q === pdfQ)); $('#qHint').textContent = Q_HINT[pdfQ]; }
 document.querySelectorAll('#qSeg button').forEach(b => b.onclick = () => { pdfQ = b.dataset.q; syncQ(); try { localStorage.setItem('scanner-pdf-q', pdfQ); } catch (e) {} });
 syncQ();
+
+/* opzioni PDF: chiuse di default, con riassunto delle scelte */
+function pdfOptSum() { $('#pdfOptSum').textContent = [exportSize === 'fit' ? 'Senza bordi' : 'A4', { light: 'Leggero', std: 'Standard', max: 'Massima' }[pdfQ] || '', pdfText ? 'Testo' : ''].filter(Boolean).join(' · '); }
+$('#pdfOptBtn').onclick = () => { const o = $('#pdfOpts').hidden; $('#pdfOpts').hidden = !o; $('#pdfOptBtn').setAttribute('aria-expanded', o ? 'true' : 'false'); };
+document.querySelectorAll('#sizeSeg button, #qSeg button, #pdfTextBtn').forEach(b => b.addEventListener('click', pdfOptSum));
+pdfOptSum();
 async function pdfData(p, best) {
   if (best || pdfQ === 'max') return blobToDataURL(p.processed);
   const side = pdfQ === 'light' ? 1650 : 2480, q = pdfQ === 'light' ? .62 : .8; // ~140 e ~210 punti per pollice su un A4
